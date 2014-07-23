@@ -1,22 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="src">
+		<attributes>
+			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="LightCurtain/lib/jni"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
 	<classpathentry kind="lib" path="lib/core.jar"/>
-	<classpathentry kind="lib" path="lib/gluegen-rt-natives-linux-amd64.jar"/>
-	<classpathentry kind="lib" path="lib/gluegen-rt-natives-linux-armv6hf.jar"/>
-	<classpathentry kind="lib" path="lib/gluegen-rt-natives-linux-i586.jar"/>
 	<classpathentry kind="lib" path="lib/gluegen-rt-natives-macosx-universal.jar"/>
-	<classpathentry kind="lib" path="lib/gluegen-rt-natives-windows-amd64.jar"/>
-	<classpathentry kind="lib" path="lib/gluegen-rt-natives-windows-i586.jar"/>
-	<classpathentry kind="lib" path="lib/gluegen-rt.jar"/>
 	<classpathentry kind="lib" path="lib/jl1.0.jar"/>
 	<classpathentry kind="lib" path="lib/jogl-all-natives-linux-amd64.jar"/>
 	<classpathentry kind="lib" path="lib/jogl-all-natives-linux-armv6hf.jar"/>
 	<classpathentry kind="lib" path="lib/jogl-all-natives-linux-i586.jar"/>
 	<classpathentry kind="lib" path="lib/jogl-all-natives-macosx-universal.jar"/>
-	<classpathentry kind="lib" path="lib/jogl-all-natives-windows-amd64.jar"/>
-	<classpathentry kind="lib" path="lib/jogl-all-natives-windows-i586.jar"/>
 	<classpathentry kind="lib" path="lib/jogl-all.jar"/>
 	<classpathentry kind="lib" path="lib/jsminim.jar"/>
 	<classpathentry kind="lib" path="lib/minim.jar"/>
@@ -25,5 +21,19 @@
 	<classpathentry kind="lib" path="lib/tritonus_aos.jar"/>
 	<classpathentry kind="lib" path="lib/tritonus_share.jar"/>
 	<classpathentry kind="lib" path="lib/peasycam.jar"/>
+	<classpathentry kind="lib" path="lib/promidi.jar"/>
+	<classpathentry kind="lib" path="lib/GLGraphics.jar"/>
+	<classpathentry kind="lib" path="lib/gluegen-rt-natives-linux-amd64.jar"/>
+	<classpathentry kind="lib" path="lib/gluegen-rt-natives-linux-armv6hf.jar"/>
+	<classpathentry kind="lib" path="lib/gluegen-rt-natives-linux-i586.jar"/>
+	<classpathentry kind="lib" path="lib/gluegen-rt-natives-windows-amd64.jar"/>
+	<classpathentry kind="lib" path="lib/gluegen-rt-natives-windows-i586.jar"/>
+	<classpathentry kind="lib" path="lib/gluegen-rt.jar"/>
+	<classpathentry kind="lib" path="lib/jogl-all-natives-windows-amd64.jar"/>
+	<classpathentry kind="lib" path="lib/jogl-all-natives-windows-i586.jar"/>
+	<classpathentry kind="lib" path="lib/jssc.jar"/>
+	<classpathentry kind="lib" path="lib/serial.jar"/>
+	<classpathentry kind="lib" path="lib/themidibus.jar"/>
+	<classpathentry kind="lib" path="lib/dmxP512.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
