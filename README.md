@@ -18,6 +18,7 @@ Visualizers on-display at RMFC 2014
 
 ### NOTE
 Everything here is 100% domain specific due to time constraints. If there's interest (star me / watch me) I'll port this to something that you can "just run." For now, you need everything I have to achieve the same functionality:
+
 1. Allen and Heath Xone:K2 for control surface
 2. Enttec USB PRO for DMX out
 3. Two Teensy 3.1 running the OCTOWS2811 "video" code (https://www.pjrc.com/teensy/td_libs_OctoWS2811.html)
