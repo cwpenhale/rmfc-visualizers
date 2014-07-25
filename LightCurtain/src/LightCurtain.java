@@ -3,17 +3,21 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.Properties;
-import java.util.stream.Stream;
+import java.util.stream.IntStream;
 
-import peasy.PeasyCam;
 import processing.core.PApplet;
 import processing.core.PImage;
 import processing.core.PVector;
 import processing.event.KeyEvent;
 import processing.serial.Serial;
 import promidi.MidiIO;
-import SimpleOpenNI.SimpleOpenNI;
 import ddf.minim.AudioInput;
 import ddf.minim.Minim;
 import ddf.minim.analysis.BeatDetect;
@@ -21,7 +25,7 @@ import ddf.minim.analysis.FFT;
 import dmxP512.DmxP512;
 
 
-public class LightCurtain extends PApplet {
+public class LightCurtain extends PApplet implements Observer{
 
 	/**
 	 * @author cpenhale - cwpenhale@gmail.com
@@ -30,18 +34,13 @@ public class LightCurtain extends PApplet {
 
 	// APP CONFIG
 	private static final int FRAME_RATE = 60;
-
 	private static Properties prefs = new Properties();
-
-	private SimpleOpenNI context;
 	private static int colorCounter = 0;
 	private static int coloredPointer = 0;
-	private PeasyCam cam;
 	private Minim minim;
 	private AudioInput lineIn;
 	private FFT fft;
 	private BeatDetect beatDetect;
-
 	private static float bgBright;
 	private float threshold = 1300;
 	private static int dHeight;
@@ -74,28 +73,24 @@ public class LightCurtain extends PApplet {
 	private K2Controller k2;
 	private boolean disableMotionBlur;
 	private int motionBlurKey;
-	private int red;
-	private int blue;
-	private int green;
+	
+	//BPM counter
+	private float averageBpm;
+	private int nearestWhole;
+	private int[] bpmHits;
+	private int hitPointer;
+
+	private float averageDistanceBetweenBeatsInMillis;
+
+	private int counter = 1;
+	private static final int BPM_HIT_HISTORY = 8;
+	//
 	
 	public void setup() {
 		defaultConfig();
-		size(1280, 720, OPENGL);
+		size(1280, 720);
 		steps = 4;
-		// peasy
-		cam = new PeasyCam(this, 100);
 		loadPrefs();
-		context = new SimpleOpenNI(this);
-		if (context.isInit() == false) {
-			println("Can't init SimpleOpenNI, maybe the camera is not connected!");
-			exit();
-			return;
-		}
-		// enable depthMap generation
-		context.enableDepth();
-		dHeight = context.depthHeight();
-		dWidth = context.depthHeight();
-		// color
 		colorMode(HSB, 100);
 		frameRate(new Float(FRAME_RATE));
 		//sound activation
@@ -103,7 +98,7 @@ public class LightCurtain extends PApplet {
 		lineIn = minim.getLineIn();
 	    fft = new FFT(lineIn.bufferSize(), lineIn.sampleRate());
 	    beatDetect = new BeatDetect(lineIn.bufferSize(), lineIn.sampleRate());
-	    beatDetect.setSensitivity(10);
+	    beatDetect.setSensitivity(150);
 		background(0);
 		k2 = new K2Controller(MidiIO.getInstance(this));
 		
@@ -120,8 +115,57 @@ public class LightCurtain extends PApplet {
 		dmxOutput=new DmxP512(this);
 	    dmxOutput.setupDmxPro(DMXPRO_PORT,DMXPRO_BAUDRATE );
 		//END DMX
+	    ControlSurfaceItem bl = k2.getButtons().stream().parallel().filter(b->b.getLabel().equals("BL")).findFirst().get();
+	    if(bl!=null){
+	    	System.out.println("BUTTTS");
+	    	bl.addObserver(this);
+	    }
+	    
+	    //BPM
+	    bpmHits = new int[BPM_HIT_HISTORY];
+	    //BPM
 	}
 	
+	public void draw() {
+		background(0);
+		bgBright = k2.getFaders().stream().filter(v->v.getColumn()==0).findFirst().get().getValue();
+		beatDetect.detect(lineIn.mix);
+		fft.forward(lineIn.mix);
+		soundDetection();
+		specSize = 60;
+		bandEnergies = new float[specSize];
+		for(int i = 0 ; i<specSize; i++){
+			bandEnergies[i] = (int) fft.getBand(i);
+		}
+		specDiv = (int) (1280/specSize);
+		noStroke();
+		rectMode(CENTER);
+		for(int i = 0; i < specSize; i++) {
+			ColoredVector v = getNextColor(new PVector(1,1));
+			fill(v.getColor(), v.getSaturation(), bgBright);
+			rect((i*60)+30,360,40,10+(bandEnergies[i]/2)*bandEnergies[i]);
+		}
+		drawLightCurtain(get());
+	}
+	
+	private void soundDetection(){
+		if(millis()%averageDistanceBetweenBeatsInMillis<=20){
+			bgBright = 100;
+			System.out.println(counter++);
+			if(counter>4){
+				counter = 1;
+			}
+		}
+		if(beatDetect.isHat()){
+			dmx();
+			bgBright+=5;
+		}
+		if(beatDetect.isSnare()){
+			bgBright+=10;
+		}
+	}
+	
+
 	private void serialConfigure(String portName){
 		if (numPorts > maxPorts) {
 			println("too many serial ports, please increase maxPorts");
@@ -204,7 +248,7 @@ public class LightCurtain extends PApplet {
 		try {
 			FileInputStream input = new FileInputStream("prefs.properties");
 			prefs.load(input);
-			loadCameraState();
+//			loadCameraState();
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -216,7 +260,7 @@ public class LightCurtain extends PApplet {
 	}
 
 	private void savePrefs() {
-		saveCameraState();
+//		saveCameraState();
 		try {
 			FileOutputStream output = new FileOutputStream("prefs.properties");
 			prefs.store(output, null);
@@ -229,34 +273,6 @@ public class LightCurtain extends PApplet {
 		}
 	}
 
-	private void saveCameraState() {
-		float[] rots = cam.getRotations();
-		float[] pozs = cam.getPosition();
-		prefs.setProperty("camX", String.valueOf(pozs[0]));
-		prefs.setProperty("camY", String.valueOf(pozs[1]));
-		prefs.setProperty("camZ", String.valueOf(pozs[2]));
-		prefs.setProperty("rotX", String.valueOf(rots[0]));
-		prefs.setProperty("rotY", String.valueOf(rots[1]));
-		prefs.setProperty("rotZ", String.valueOf(rots[2]));
-		prefs.setProperty("zoom", String.valueOf(cam.getDistance()));
-	}
-	
-	private void loadCameraState() {
-		if(cam!=null){
-			cam.setRotations(
-					new Float(prefs.getProperty("rotX")),
-					new Float(prefs.getProperty("rotY")),
-					new Float(prefs.getProperty("rotZ"))
-			);
-			cam.lookAt(
-				Double.valueOf(prefs.getProperty("camX")),
-				Double.valueOf(prefs.getProperty("camY")),
-				Double.valueOf(prefs.getProperty("camZ"))
-			);
-			cam.setDistance(Double.valueOf(prefs.getProperty("zoom")));
-		}
-	}
-
 	private void defaultConfig() {
 		prefs.setProperty("camX", "100");
 		prefs.setProperty("camY", "100");
@@ -266,63 +282,13 @@ public class LightCurtain extends PApplet {
 		prefs.setProperty("rotZ", "1000");
 		prefs.setProperty("zoom", "50");
 	}
-
-	public void draw() {
-		if(isDisableMotionBlur()){
-			lights();
-			background(0);
-		}else{
-			camera();
-			noLights();
-			hint(DISABLE_DEPTH_TEST);
-			fill(0, FRAME_RATE/3);
-			rect(0,0,1280,720);
-			hint(ENABLE_DEPTH_TEST);
-			loadCameraState();
-			lights();
-		}
-		// update the cam
-		context.update();
-		strokeWeight((float) steps);
-		beatDetect.detect(lineIn.mix);
-		bgBright = k2.getFaders().stream().filter(v->v.getColumn()==0).findFirst().get().getValue();
-		red = scaleMidiToDMX(k2.getFaders().stream().filter(v->v.getColumn()==1).findFirst().get().getValue());
-		blue = scaleMidiToDMX(k2.getFaders().stream().filter(v->v.getColumn()==2).findFirst().get().getValue());
-		green = scaleMidiToDMX(k2.getFaders().stream().filter(v->v.getColumn()==3).findFirst().get().getValue());
-		if(beatDetect.isKick()){
-			bgBright = 100;
-		}else{
-			bgBright -= 5;
-		}
-		if(beatDetect.isHat()){
-			bgBright+=5;
-		}
-		if(beatDetect.isSnare()){
-			bgBright+=10;
-		}
-		fft.forward(lineIn.mix);
-		specSize = fft.specSize();
-		bandEnergies = new float[specSize];
-		for(int i = 0 ; i<specSize; i++){
-			bandEnergies[i] = (int) fft.getBand(i) / (int) 10;
-		}
-		specDiv = (int) (27065/specSize);
-		Stream.of(context.depthMapRealWorld())
-			.parallel()
-			.filter(v -> (int) v.x % steps == 0 && (int) v.y % steps == 0 && v.z <= threshold)
-			.map(LightCurtain::getNextColor)
-			.sequential()
-			.forEach(this::forEachPoint);
-		drawLightCurtain(get());
-		dmx();
-	}
 	
 	private void dmx(){
-		dmxOutput.set(1,60); // 27 channel mode
-		dmxOutput.set(3,0); //STROBe
-		dmxOutput.set(4,red); // Speed channel mode
-		dmxOutput.set(5,blue);
-		dmxOutput.set(6,green);
+		dmxOutput.set(1, 60); // 6 channel mode
+		dmxOutput.set(3, 0); //STROBe
+		dmxOutput.set(4, (int) red(color(colorCounter, 100, bgBright))); 
+		dmxOutput.set(5, (int) green(color(colorCounter, 100, bgBright)));
+		dmxOutput.set(6, (int) blue(color(colorCounter, 100, bgBright)));
 	}
 	
 	private void forEachPoint(ColoredVector vector){
@@ -337,11 +303,8 @@ public class LightCurtain extends PApplet {
 	}
 	
 	public static int scaleMidiToDMX(int midiValue){
-		return (int) ((float) midiValue/127) * 255;
+		return (int) (((float) midiValue/ (float) 127) * (float) 255);
 	}
-	
-	
-	
 	
 	private void drawLightCurtain(PImage image){
 		  for (int i=0; i < numPorts; i++) {    
@@ -451,7 +414,7 @@ public class LightCurtain extends PApplet {
 		if (colorCounter >= 100) {
 			colorCounter = 0;
 		}
-		if (coloredPointer >= specDiv) {
+		if (coloredPointer >= 2) {
 			coloredPointer = 0;
 			specCounter++;
 			// reset spec counter when it has cycled through the spectrums
@@ -475,6 +438,33 @@ public class LightCurtain extends PApplet {
 
 	public void setDisableMotionBlur(boolean disableMotionBlur) {
 		this.disableMotionBlur = disableMotionBlur;
+	}
+
+	@Override
+	public void update(Observable o, Object arg) {
+		if(o instanceof ControlSurfaceItem){
+			ControlSurfaceItem item = (ControlSurfaceItem) o;
+			//LOGIC
+			if(item.getLabel().equals("BL")){
+				if(item.getValue()==127){
+					if(hitPointer==8)
+						hitPointer = 0;
+					bpmHits[hitPointer++] = millis();
+					int historyCounter = 0;
+					int[] history = new int[BPM_HIT_HISTORY/2];
+					for(int i=0; i<BPM_HIT_HISTORY/2; i++){
+						history[historyCounter++] 
+								= 
+								bpmHits[i+1]
+										- bpmHits[i];
+					}
+					averageDistanceBetweenBeatsInMillis = Math.abs((float) Arrays.stream(history).average().getAsDouble());
+					averageBpm = Math.abs(60000/(float) Arrays.stream(history).average().getAsDouble());
+					System.out.println(averageBpm);
+					System.out.println(averageDistanceBetweenBeatsInMillis);
+				}
+			}
+		}
 	}
 	
 	

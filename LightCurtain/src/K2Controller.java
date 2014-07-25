@@ -1,6 +1,7 @@
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Observable;
 import java.util.function.Consumer;
 
 import processing.core.PApplet;
@@ -27,25 +28,23 @@ public class K2Controller {
 	private Collection<ControlSurfaceItem> pots;
 	private Collection<ControlSurfaceItem> controls;
 	private Collection<ControlSurfaceItem> rotaries;
+	private Collection<ControlSurfaceItem> buttons;
 	private int inputDevice;
 	private int outputDevice;
 
 	public K2Controller(MidiIO instance){
 		midiIO = instance;
-		setRotaries(new ArrayList<K2Controller.ControlSurfaceItem>());
-		setPots(new ArrayList<K2Controller.ControlSurfaceItem>());
-		setFaders(new ArrayList<K2Controller.Fader>());
-		setControls(new ArrayList<K2Controller.ControlSurfaceItem>());
+		setButtons(new ArrayList<ControlSurfaceItem>());
+		setRotaries(new ArrayList<ControlSurfaceItem>());
+		setPots(new ArrayList<ControlSurfaceItem>());
+		setFaders(new ArrayList<Fader>());
+		setControls(new ArrayList<ControlSurfaceItem>());
 		findDevice();
 		initializeControl();
 	}
 
 	public void handleNote(Note note) {
-		System.out.println("PITCH: "+note.getPitch());
-		System.out.println("LEN: "+note.getLength());
-		System.out.println("d1: "+note.getData1());
-		System.out.println("VEL "+note.getVelocity());
-		
+		getButtons().stream().filter(b -> b.getId() == note.getPitch()).peek(b -> b.setValue(note.getVelocity())).forEach(b -> b.notifyObservers());
 	}
 	
 	public void handleController(Controller event){
@@ -76,6 +75,7 @@ public class K2Controller {
 		initializeFaders();
 		initializePots();
 		initializeRotaries();
+		initializeButtons();
 	}
 	
 	private void initializeFaders(){
@@ -117,6 +117,135 @@ public class K2Controller {
 		Collection<ControlSurfaceItem> potList = Arrays.asList(pots);
 		getPots().addAll(potList);
 		getControls().addAll(potList);
+	}
+
+	private void initializeButtons(){
+		ControlSurfaceItem[] buttons =  new ControlSurfaceItem[18];
+		int i = 0;
+		//big one left
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(12);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("BL");
+		//big one right
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(15);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("BR");
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(36);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("A");
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(37);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("B");
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(38);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("C");
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(39);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("D");
+		//E
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(32);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("E");
+		//F
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(33);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("F");
+		//G
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(34);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("G");
+		//H
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(35);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("H");
+		//I
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(28);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("I");
+		//J
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(29);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("J");
+		//K
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(30);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("K");
+		//L
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(31);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("L");
+		//M
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(24);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("M");
+		//N
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(25);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("N");
+		//O
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(26);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("O");
+		//P
+		i++;
+		buttons[i] = new ControlSurfaceItem();
+		buttons[i].setId(27);
+		buttons[i].setValue(0);
+		buttons[i].setColumn(0);
+		buttons[i].setLabel("P");
+		Collection<ControlSurfaceItem> buttonsList = Arrays.asList(buttons);
+		getButtons().addAll(buttonsList);
+		getControls().addAll(buttonsList);
 	}
 	
 	private void initializeRotaries(){
@@ -199,6 +328,14 @@ public class K2Controller {
 	public void setRotaries(Collection<ControlSurfaceItem> rotaries) {
 		this.rotaries = rotaries;
 	}
+	
+	public Collection<ControlSurfaceItem> getButtons() {
+		return buttons;
+	}
+
+	public void setButtons(Collection<ControlSurfaceItem> buttons) {
+		this.buttons = buttons;
+	}
 
 	public class Fader extends ControlSurfaceItem {
 		private static final int MIN_VAL = 0;
@@ -220,42 +357,5 @@ public class K2Controller {
 		
 	}
 	
-	public class ControlSurfaceItem{
-		private int id;
-		private int value;
-		private int column;
-		private Consumer<ControlSurfaceItem> action;
-		
-		public int getId() {
-			return id;
-		}
 
-		public void setId(int id) {
-			this.id = id;
-		}
-		
-		public int getValue() {
-			return value;
-		}
-
-		public void setValue(int value) {
-			this.value = value;
-		}
-
-		public int getColumn() {
-			return column;
-		}
-
-		public void setColumn(int column) {
-			this.column = column;
-		}
-
-		public Consumer<ControlSurfaceItem> getAction() {
-			return action;
-		}
-
-		public void setAction(Consumer<ControlSurfaceItem> action) {
-			this.action = action;
-		}
-	}
 }
