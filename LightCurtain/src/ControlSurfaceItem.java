@@ -4,6 +4,7 @@ import java.util.function.Consumer;
 public class ControlSurfaceItem extends Observable {
 	private int id;
 	private int value;
+	private int row;
 	private int column;
 	private String label;
 	private Consumer<ControlSurfaceItem> action;
@@ -47,5 +48,13 @@ public class ControlSurfaceItem extends Observable {
 
 	public void setLabel(String label) {
 		this.label = label;
+	}
+
+	public int getRow() {
+		return row;
+	}
+
+	public void setRow(int row) {
+		this.row = row;
 	}
 }

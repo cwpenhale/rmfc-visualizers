@@ -33,7 +33,6 @@
 	<classpathentry kind="lib" path="lib/jogl-all-natives-windows-i586.jar"/>
 	<classpathentry kind="lib" path="lib/jssc.jar"/>
 	<classpathentry kind="lib" path="lib/serial.jar"/>
-	<classpathentry kind="lib" path="lib/themidibus.jar"/>
 	<classpathentry kind="lib" path="lib/dmxP512.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

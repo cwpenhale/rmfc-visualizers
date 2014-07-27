@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import processing.core.PApplet;
 import promidi.Controller;
 import promidi.MidiIO;
+import promidi.MidiOut;
 import promidi.Note;
 
 public class K2Controller {
@@ -14,7 +15,7 @@ public class K2Controller {
 	/**
 	 * @author cpenhale - cwpenhale@gmail.com
 	 */
-	private static final String DEVICE_NAME = "XONE:K2";
+	private static final String DEVICE_NAME = "boxputer";
 	private static final int MIDI_CHANNEL = 4;
 	private static final int  NUMBER_OF_FADERS = 4;
 	private static final int FADER_FIRST_NOTE = 16;
@@ -31,6 +32,7 @@ public class K2Controller {
 	private Collection<ControlSurfaceItem> buttons;
 	private int inputDevice;
 	private int outputDevice;
+	private MidiOut midiOut;
 
 	public K2Controller(MidiIO instance){
 		midiIO = instance;
@@ -42,6 +44,30 @@ public class K2Controller {
 		findDevice();
 		initializeControl();
 	}
+	
+	public void lightUp(ControlSurfaceItem item, int color){
+		System.out.println("LIGHT");
+		int note = item.getId();
+		if(color==1){
+			note = note*(color*4);
+		}
+
+	}
+	
+	public void bpmFlash(){
+		getMidiOut().sendNote(new Note(12, 127, 6));
+		getMidiOut().sendNote(new Note(24, 127, 6));
+		getMidiOut().sendNote(new Note(0, 127, 6));
+		getMidiOut().sendNote(new Note(28, 127, 6));
+		getMidiOut().sendNote(new Note(32, 127, 6));
+		getMidiOut().sendNote(new Note(36, 127, 6));
+		getMidiOut().sendNote(new Note(12, 0, 6));
+		getMidiOut().sendNote(new Note(24, 0, 6));
+		getMidiOut().sendNote(new Note(0, 0, 6));
+		getMidiOut().sendNote(new Note(28, 0, 6));
+		getMidiOut().sendNote(new Note(32, 0, 6));
+		getMidiOut().sendNote(new Note(36, 0, 6));
+	}
 
 	public void handleNote(Note note) {
 		getButtons().stream().filter(b -> b.getId() == note.getPitch()).peek(b -> b.setValue(note.getVelocity())).forEach(b -> b.notifyObservers());
@@ -49,7 +75,7 @@ public class K2Controller {
 	
 	public void handleController(Controller event){
 		getControls().stream().parallel().filter(i -> i.getId() == event.getNumber()).forEach(i -> i.setValue(event.getValue()));
-		getControls().stream().parallel().filter(i -> i.getId() == event.getNumber()).forEach(i -> i.getAction().accept(i));
+		//getControls().stream().parallel().filter(i -> i.getId() == event.getNumber()).forEach(i -> i.getAction().accept(i));
 	}
 	
 
@@ -69,6 +95,7 @@ public class K2Controller {
 		}
 		midiIO.plug(this, "handleNote", getInputDevice(), MIDI_CHANNEL-1);
 		midiIO.plug(this, "handleController", getInputDevice(), MIDI_CHANNEL-1);
+		setMidiOut(midiIO.getMidiOut(MIDI_CHANNEL-1, getOutputDevice()));
 	}
 	
 	private void initializeControl(){
@@ -252,7 +279,7 @@ public class K2Controller {
 		Consumer<ControlSurfaceItem> defaultAction = new Consumer<ControlSurfaceItem>() {
 			@Override
 			public void accept(ControlSurfaceItem f) {
-				System.out.println("COLUMN #"+f.getColumn()+" Rotary #"+f.getId()+"'s Value -> "+ f.getValue());
+				System.out.println("COLUMN #"+f.getColumn()+"Row #"+f.getRow()+" Rotary #"+f.getId()+"'s Value -> "+ f.getValue());
 			}
 		};
 		ControlSurfaceItem[] rotaries =  new ControlSurfaceItem[NUMBER_OF_COLUMNS*NUMBER_OF_ROTARIES_PER_COLUMN];
@@ -263,6 +290,7 @@ public class K2Controller {
 					rotaries[i] = new ControlSurfaceItem();
 					rotaries[i].setId((ROTARY_FIRST_NOTE*row)+column);
 					rotaries[i].setValue(0);
+					rotaries[i].setRow(row);
 					rotaries[i].setColumn(column);
 					rotaries[i].setAction(defaultAction);
 					i++;
@@ -337,6 +365,14 @@ public class K2Controller {
 		this.buttons = buttons;
 	}
 
+	public MidiOut getMidiOut() {
+		return midiOut;
+	}
+
+	public void setMidiOut(MidiOut midiOut) {
+		this.midiOut = midiOut;
+	}
+
 	public class Fader extends ControlSurfaceItem {
 		private static final int MIN_VAL = 0;
 		private static final int MAX_VAL = 127;
@@ -344,8 +380,6 @@ public class K2Controller {
 		private String description;
 		
 		public Fader(){ }
-		
-		
 		
 		public String getDescription() {
 			return description;

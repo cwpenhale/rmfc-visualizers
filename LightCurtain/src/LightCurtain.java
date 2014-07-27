@@ -64,7 +64,7 @@ public class LightCurtain extends PApplet implements Observer{
 	//END PANEL
 	
 	//DMX
-	private static String DMXPRO_PORT = "/dev/tty.usbserial-A7XSBYHC";
+	private static String DMXPRO_PORT = "COM7";
 	private static int DMXPRO_BAUDRATE = 115000;
 	private DmxP512 dmxOutput;
 	int universeSize=128;
@@ -83,6 +83,14 @@ public class LightCurtain extends PApplet implements Observer{
 	private float averageDistanceBetweenBeatsInMillis;
 
 	private int counter = 1;
+
+	private ControlSurfaceItem bl;
+
+	private static int hiBright;
+	private static int midBright;
+	private static int loBright;
+	private static int bpmQuant;
+	
 	private static final int BPM_HIT_HISTORY = 8;
 	//
 	
@@ -101,10 +109,9 @@ public class LightCurtain extends PApplet implements Observer{
 	    beatDetect.setSensitivity(150);
 		background(0);
 		k2 = new K2Controller(MidiIO.getInstance(this));
-		
 		// PANEL
-		serialConfigure("/dev/tty.usbmodem461521");  // change these to your port names
-		serialConfigure("/dev/tty.usbmodem465661");
+		serialConfigure("COM5");  // change these to your port names
+		serialConfigure("COM6");
 		if (errorCount > 0) exit();
 		for (int i=0; i < 256; i++) {
 		  gammatable[i] = (int)(pow((float) ((float)i / 255.0), gamma) * 255.0 + 0.5);
@@ -113,9 +120,10 @@ public class LightCurtain extends PApplet implements Observer{
 		
 		//DMX
 		dmxOutput=new DmxP512(this);
-	    dmxOutput.setupDmxPro(DMXPRO_PORT,DMXPRO_BAUDRATE );
+	    dmxOutput.setupDmxPro(DMXPRO_PORT, DMXPRO_BAUDRATE);
+	    System.out.println(dmxOutput);
 		//END DMX
-	    ControlSurfaceItem bl = k2.getButtons().stream().parallel().filter(b->b.getLabel().equals("BL")).findFirst().get();
+	    bl = k2.getButtons().stream().parallel().filter(b->b.getLabel().equals("BL")).findFirst().get();
 	    if(bl!=null){
 	    	System.out.println("BUTTTS");
 	    	bl.addObserver(this);
@@ -124,11 +132,17 @@ public class LightCurtain extends PApplet implements Observer{
 	    //BPM
 	    bpmHits = new int[BPM_HIT_HISTORY];
 	    //BPM
+	    
+	    //circle
+	    circleSetup();
 	}
 	
 	public void draw() {
 		background(0);
-		bgBright = k2.getFaders().stream().filter(v->v.getColumn()==0).findFirst().get().getValue();
+		bpmQuant = scaleMidiToPercent(k2.getFaders().stream().filter(v->v.getColumn()==0).findFirst().get().getValue());
+		hiBright = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==0&&v.getRow()==1).findFirst().get().getValue());
+		midBright = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==0&&v.getRow()==2).findFirst().get().getValue());
+		loBright = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==0&&v.getRow()==3).findFirst().get().getValue());
 		beatDetect.detect(lineIn.mix);
 		fft.forward(lineIn.mix);
 		soundDetection();
@@ -139,6 +153,7 @@ public class LightCurtain extends PApplet implements Observer{
 		}
 		specDiv = (int) (1280/specSize);
 		noStroke();
+		circleDraw();
 		rectMode(CENTER);
 		for(int i = 0; i < specSize; i++) {
 			ColoredVector v = getNextColor(new PVector(1,1));
@@ -148,20 +163,33 @@ public class LightCurtain extends PApplet implements Observer{
 		drawLightCurtain(get());
 	}
 	
+	private int scaleMidiToPercent(int value) {
+		return (int)( ((float)value/(float) 127)* (float) 100);
+	}
+
 	private void soundDetection(){
-		if(millis()%averageDistanceBetweenBeatsInMillis<=20){
-			bgBright = 100;
-			System.out.println(counter++);
+		bgBright = loBright;
+		float quantizedMillis = averageDistanceBetweenBeatsInMillis*((float) bpmQuant/100);
+		if(millis()%quantizedMillis<=20){
+			dmx();
+			bgBright = hiBright;
+			k2.bpmFlash();
 			if(counter>4){
 				counter = 1;
 			}
 		}
 		if(beatDetect.isHat()){
-			dmx();
 			bgBright+=5;
 		}
 		if(beatDetect.isSnare()){
 			bgBright+=10;
+		}
+		if(bgBright<=0){
+			bgBright = loBright;
+		}else{
+			if(bgBright>=100){
+				bgBright = hiBright;
+			}
 		}
 	}
 	
@@ -289,6 +317,11 @@ public class LightCurtain extends PApplet implements Observer{
 		dmxOutput.set(4, (int) red(color(colorCounter, 100, bgBright))); 
 		dmxOutput.set(5, (int) green(color(colorCounter, 100, bgBright)));
 		dmxOutput.set(6, (int) blue(color(colorCounter, 100, bgBright)));
+		//STRIP
+		dmxOutput.set(28, 210);
+		dmxOutput.set(29, (int) red(color(colorCounter, 100, bgBright)));
+		dmxOutput.set(30, (int) green(color(colorCounter, 100, bgBright)));
+		dmxOutput.set(31, (int) blue(color(colorCounter, 100, bgBright)));
 	}
 	
 	private void forEachPoint(ColoredVector vector){
@@ -468,4 +501,67 @@ public class LightCurtain extends PApplet implements Observer{
 	}
 	
 	
+	// http://www.openprocessing.org/sketch/155107
+	
+	ArrayList<Circle> circles;
+	int space;
+	 
+	void circleSetup() {  //setup function called initially, only once
+	    circles = new ArrayList();
+	    space = 50;
+	    for (int i = -2 * space ; i <= (width) + space; i += space) {
+	        for (int j = -2 * space ; j <= (height) + space; j += space) {
+	            circles.add(new Circle(i, j));
+	        }
+	    }
+	}
+	
+	void circleDraw() {  //draw function loops
+	    for (Circle c : circles) {
+	        c.update();
+	        c.draw();
+	    }
+	}
+
+	 
+	class Circle {
+	    float cx, cy;
+	    float rx, ry;
+	    float rT;
+	    float offset;
+	    float size;
+	     
+	    Circle(float x, float y) {
+	        this.cx = x;
+	        this.cy = y;
+	         
+	        this.rT = 500;
+	        this.offset = random(-PI/8, PI/8);
+	        this.size = 50;
+	    }
+	     
+	    void update() {
+	        float t = millis()/rT;
+	         
+	        //t += (cx/400)*PI;
+	        //t += (cy/400)*PI;
+	        
+	        t += cos(abs(1-(cx/(width/2))))*TWO_PI;
+	        t += cos(abs(1-(cy/(height/2))))*TWO_PI;
+	        t += offset;
+	         
+	        //rx = abs((cos(t))*(((cx)/25)+10))-4;
+	        rx = sin(t)*size;
+	        ry = rx;
+	    }
+	     
+	    void draw() {
+	        if (rx > 0 && ry > 0) {
+	            noStroke();
+	            fill(colorCounter, 100, midBright);
+	            ellipse(cx, cy, rx, ry);
+	        }
+	    }
+
+	}
 }
