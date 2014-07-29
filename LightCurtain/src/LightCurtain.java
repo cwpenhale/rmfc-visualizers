@@ -94,6 +94,25 @@ public class LightCurtain extends PApplet implements Observer{
 	private static final int BPM_HIT_HISTORY = 8;
 	//
 	
+	//GRADIENT
+	int Y_AXIS = 1;
+	int X_AXIS = 2;
+
+	private float motionBlur;
+
+	private boolean molefayOn;
+	//GRADIENT
+
+	private boolean dmxColorChange;
+
+	private int localColor;
+
+	private float dmxLocalColor;
+
+	private boolean quarterStrobeOn;
+
+	private boolean halfStrobeOn;
+	
 	public void setup() {
 		defaultConfig();
 		size(1280, 720);
@@ -138,40 +157,80 @@ public class LightCurtain extends PApplet implements Observer{
 	}
 	
 	public void draw() {
-		background(0);
+		//populate values from controller
 		bpmQuant = scaleMidiToPercent(k2.getFaders().stream().filter(v->v.getColumn()==0).findFirst().get().getValue());
 		hiBright = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==0&&v.getRow()==1).findFirst().get().getValue());
 		midBright = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==0&&v.getRow()==2).findFirst().get().getValue());
 		loBright = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==0&&v.getRow()==3).findFirst().get().getValue());
-		beatDetect.detect(lineIn.mix);
-		fft.forward(lineIn.mix);
+		motionBlur = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==3&&v.getRow()==1).findFirst().get().getValue())*100;
+		quarterStrobeOn = k2.getButtons().stream().filter(b -> b.getLabel().equals("D")).findFirst().get().getValue()==127;
+		halfStrobeOn = k2.getButtons().stream().filter(b -> b.getLabel().equals("H")).findFirst().get().getValue()==127;
+		molefayOn = k2.getButtons().stream().filter(b -> b.getLabel().equals("L")).findFirst().get().getValue()==127;
+		// draw motion blur 
+		background(0, motionBlur);
+		// sound detect
 		soundDetection();
-		specSize = 60;
-		bandEnergies = new float[specSize];
-		for(int i = 0 ; i<specSize; i++){
-			bandEnergies[i] = (int) fft.getBand(i);
-		}
-		specDiv = (int) (1280/specSize);
-		noStroke();
+		//drawing
 		circleDraw();
+		fftVisualizer();
+		molefay();
+		PImage now = get();
+		image(now, 0, 0);
+		pushMatrix();
+		scale((float) -1.0, (float) 1.0);
+		image(now, -now.width, 0);
+		popMatrix();
+		drawLightCurtain(get());
+	}
+	
+	
+	
+	private void molefay() {
+		if(molefayOn){
+			rectMode(CORNER);
+			fill((float)100, (float) 100);
+			rect(0, 0, width, height);
+		}else{
+			if(quarterStrobeOn||halfStrobeOn){
+				int skip = 1;
+				if(quarterStrobeOn){
+					skip = 4;
+				}else{
+					if(halfStrobeOn)
+					skip = 2;
+				}
+				for(int i=0; i<height/24; i++){
+					if(i%skip==0){
+						rectMode(CORNER);
+						fill((float)100, (float) 100);
+						rect(0, i*(height/24)+10, width, height/24);
+					}
+				}
+			}
+		}
+	}
+
+	private void fftVisualizer() {
+		noStroke();
 		rectMode(CENTER);
 		for(int i = 0; i < specSize; i++) {
 			ColoredVector v = getNextColor(new PVector(1,1));
 			fill(v.getColor(), v.getSaturation(), bgBright);
 			rect((i*60)+30,360,40,10+(bandEnergies[i]/2)*bandEnergies[i]);
 		}
-		drawLightCurtain(get());
 	}
-	
+
 	private int scaleMidiToPercent(int value) {
 		return (int)( ((float)value/(float) 127)* (float) 100);
 	}
 
 	private void soundDetection(){
+		beatDetect.detect(lineIn.mix);
+		fft.forward(lineIn.mix);
 		bgBright = loBright;
 		float quantizedMillis = averageDistanceBetweenBeatsInMillis*((float) bpmQuant/100);
-		if(millis()%quantizedMillis<=20){
-			dmx();
+		if(millis()%quantizedMillis<=30){
+			dmxColorChange = true;
 			bgBright = hiBright;
 			k2.bpmFlash();
 			if(counter>4){
@@ -191,6 +250,13 @@ public class LightCurtain extends PApplet implements Observer{
 				bgBright = hiBright;
 			}
 		}
+		specSize = 60;
+		bandEnergies = new float[specSize];
+		for(int i = 0 ; i<specSize; i++){
+			bandEnergies[i] = (int) fft.getBand(i);
+		}
+		specDiv = (int) (1280/specSize);
+		dmx();
 	}
 	
 
@@ -312,16 +378,32 @@ public class LightCurtain extends PApplet implements Observer{
 	}
 	
 	private void dmx(){
+		float localBright = bgBright;
+		float localSat = 100;
+		if(molefayOn){
+			localBright = 100;
+			localSat = 0;
+			localColor = 10;
+		}else{
+			if(dmxColorChange){
+				dmxLocalColor = colorCounter;
+			}
+		}
+		float localColor =  dmxLocalColor;
+		float localRed = red(color(localColor, localSat, localBright));
+		float localGreen = green(color(localColor, localSat, localBright));
+		float localBlue = blue(color(localColor, localSat, localBright));
 		dmxOutput.set(1, 60); // 6 channel mode
 		dmxOutput.set(3, 0); //STROBe
-		dmxOutput.set(4, (int) red(color(colorCounter, 100, bgBright))); 
-		dmxOutput.set(5, (int) green(color(colorCounter, 100, bgBright)));
-		dmxOutput.set(6, (int) blue(color(colorCounter, 100, bgBright)));
+		dmxOutput.set(4, (int) localRed); 
+		dmxOutput.set(5, (int) localGreen);
+		dmxOutput.set(6, (int) localBlue);
 		//STRIP
 		dmxOutput.set(28, 210);
-		dmxOutput.set(29, (int) red(color(colorCounter, 100, bgBright)));
-		dmxOutput.set(30, (int) green(color(colorCounter, 100, bgBright)));
-		dmxOutput.set(31, (int) blue(color(colorCounter, 100, bgBright)));
+		dmxOutput.set(29, (int) localRed);
+		dmxOutput.set(30, (int) localGreen);
+		dmxOutput.set(31, (int) localBlue);
+		dmxColorChange = false;
 	}
 	
 	private void forEachPoint(ColoredVector vector){
@@ -527,7 +609,6 @@ public class LightCurtain extends PApplet implements Observer{
 	class Circle {
 	    float cx, cy;
 	    float rx, ry;
-	    float rT;
 	    float offset;
 	    float size;
 	     
@@ -535,13 +616,12 @@ public class LightCurtain extends PApplet implements Observer{
 	        this.cx = x;
 	        this.cy = y;
 	         
-	        this.rT = 500;
 	        this.offset = random(-PI/8, PI/8);
 	        this.size = 50;
 	    }
 	     
 	    void update() {
-	        float t = millis()/rT;
+	        float t = millis()/averageDistanceBetweenBeatsInMillis;
 	         
 	        //t += (cx/400)*PI;
 	        //t += (cy/400)*PI;
