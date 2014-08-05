@@ -112,6 +112,8 @@ public class LightCurtain extends PApplet implements Observer{
 	private boolean quarterStrobeOn;
 
 	private boolean halfStrobeOn;
+
+	private boolean blackout;
 	
 	public void setup() {
 		defaultConfig();
@@ -159,12 +161,13 @@ public class LightCurtain extends PApplet implements Observer{
 	public void draw() {
 		//populate values from controller
 		bpmQuant = scaleMidiToPercent(k2.getFaders().stream().filter(v->v.getColumn()==0).findFirst().get().getValue());
+		loBright = scaleMidiToPercent(k2.getFaders().stream().filter(v->v.getColumn()==3).findFirst().get().getValue());
 		hiBright = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==0&&v.getRow()==1).findFirst().get().getValue());
 		midBright = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==0&&v.getRow()==2).findFirst().get().getValue());
-		loBright = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==0&&v.getRow()==3).findFirst().get().getValue());
 		motionBlur = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==3&&v.getRow()==1).findFirst().get().getValue())*100;
 		quarterStrobeOn = k2.getButtons().stream().filter(b -> b.getLabel().equals("D")).findFirst().get().getValue()==127;
 		halfStrobeOn = k2.getButtons().stream().filter(b -> b.getLabel().equals("H")).findFirst().get().getValue()==127;
+		blackout = k2.getButtons().stream().filter(b -> b.getLabel().equals("P")).findFirst().get().getValue()==127;
 		molefayOn = k2.getButtons().stream().filter(b -> b.getLabel().equals("L")).findFirst().get().getValue()==127;
 		// draw motion blur 
 		background(0, motionBlur);
@@ -182,7 +185,6 @@ public class LightCurtain extends PApplet implements Observer{
 		popMatrix();
 		drawLightCurtain(get());
 	}
-	
 	
 	
 	private void molefay() {
@@ -211,11 +213,15 @@ public class LightCurtain extends PApplet implements Observer{
 	}
 
 	private void fftVisualizer() {
+		float localBright = bgBright;
+		if(blackout){
+			localBright = 0;
+		}
 		noStroke();
 		rectMode(CENTER);
 		for(int i = 0; i < specSize; i++) {
 			ColoredVector v = getNextColor(new PVector(1,1));
-			fill(v.getColor(), v.getSaturation(), bgBright);
+			fill(v.getColor(), v.getSaturation(), localBright);
 			rect((i*60)+30,360,40,10+(bandEnergies[i]/2)*bandEnergies[i]);
 		}
 	}
@@ -379,6 +385,9 @@ public class LightCurtain extends PApplet implements Observer{
 	
 	private void dmx(){
 		float localBright = bgBright;
+		if(blackout){
+			localBright = 0;
+		}
 		float localSat = 100;
 		if(molefayOn){
 			localBright = 100;
@@ -390,9 +399,9 @@ public class LightCurtain extends PApplet implements Observer{
 			}
 		}
 		float localColor =  dmxLocalColor;
-		float localRed = red(color(localColor, localSat, localBright));
-		float localGreen = green(color(localColor, localSat, localBright));
-		float localBlue = blue(color(localColor, localSat, localBright));
+		float localRed = 255*(red(color(localColor, localSat, localBright))/(float)100);
+		float localGreen = 255*(green(color(localColor, localSat, localBright))/(float)100);
+		float localBlue = 255*(blue(color(localColor, localSat, localBright))/(float)100);
 		dmxOutput.set(1, 60); // 6 channel mode
 		dmxOutput.set(3, 0); //STROBe
 		dmxOutput.set(4, (int) localRed); 
