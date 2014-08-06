@@ -93,6 +93,8 @@ public class LightCurtain extends PApplet implements Observer{
 	
 	private static final int BPM_HIT_HISTORY = 8;
 	//
+
+	private static final int RGB_VISUALIZER_INDICATOR = 109;
 	
 	//GRADIENT
 	int Y_AXIS = 1;
@@ -114,6 +116,14 @@ public class LightCurtain extends PApplet implements Observer{
 	private boolean halfStrobeOn;
 
 	private boolean blackout;
+
+	private int blueSlider;
+
+	private int greenSlider;
+
+	private int redSlider;
+
+	private boolean rgbVisualizerActive;
 	
 	public void setup() {
 		defaultConfig();
@@ -164,17 +174,33 @@ public class LightCurtain extends PApplet implements Observer{
 		loBright = scaleMidiToPercent(k2.getFaders().stream().filter(v->v.getColumn()==3).findFirst().get().getValue());
 		hiBright = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==0&&v.getRow()==1).findFirst().get().getValue());
 		midBright = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==0&&v.getRow()==2).findFirst().get().getValue());
-		motionBlur = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==3&&v.getRow()==1).findFirst().get().getValue())*100;
+		motionBlur = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==3&&v.getRow()==1).findFirst().get().getValue());
 		quarterStrobeOn = k2.getButtons().stream().filter(b -> b.getLabel().equals("D")).findFirst().get().getValue()==127;
 		halfStrobeOn = k2.getButtons().stream().filter(b -> b.getLabel().equals("H")).findFirst().get().getValue()==127;
 		blackout = k2.getButtons().stream().filter(b -> b.getLabel().equals("P")).findFirst().get().getValue()==127;
 		molefayOn = k2.getButtons().stream().filter(b -> b.getLabel().equals("L")).findFirst().get().getValue()==127;
+		
+		//color
+		rgbVisualizerActive = toggleRgbVis(k2.getButtons().stream().filter(b -> b.getLabel().equals("B")).findFirst().get().getValue()==127);
+		redSlider = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==1&&v.getRow()==1).findFirst().get().getValue());
+		greenSlider =  scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==1&&v.getRow()==2).findFirst().get().getValue());
+		blueSlider = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==1&&v.getRow()==3).findFirst().get().getValue());
+		
 		// draw motion blur 
-		background(0, motionBlur);
+		if(rgbVisualizerActive){
+			System.out.println(motionBlur);
+			colorMode(RGB);
+			background(redSlider, greenSlider, blueSlider ,  motionBlur);
+			colorMode(HSB);
+		}else{
+			background(0, motionBlur);
+		}
 		// sound detect
 		soundDetection();
 		//drawing
-		circleDraw();
+		if(!rgbVisualizerActive){
+			circleDraw();
+		}
 		fftVisualizer();
 		molefay();
 		PImage now = get();
@@ -187,6 +213,18 @@ public class LightCurtain extends PApplet implements Observer{
 	}
 	
 	
+	private boolean toggleRgbVis(boolean b) {
+		if(b) {
+			rgbVisualizerActive = !rgbVisualizerActive;
+		}
+		if(rgbVisualizerActive){ 
+			k2.sendNoteOn(RGB_VISUALIZER_INDICATOR);
+		}else{
+			k2.sendNoteOff(RGB_VISUALIZER_INDICATOR);
+		}
+		return rgbVisualizerActive;
+	}
+
 	private void molefay() {
 		if(molefayOn){
 			rectMode(CORNER);
@@ -213,6 +251,10 @@ public class LightCurtain extends PApplet implements Observer{
 	}
 
 	private void fftVisualizer() {
+		int localSat = 100;
+		if(rgbVisualizerActive){
+			localSat = 0;
+		}
 		float localBright = bgBright;
 		if(blackout){
 			localBright = 0;
@@ -221,7 +263,7 @@ public class LightCurtain extends PApplet implements Observer{
 		rectMode(CENTER);
 		for(int i = 0; i < specSize; i++) {
 			ColoredVector v = getNextColor(new PVector(1,1));
-			fill(v.getColor(), v.getSaturation(), localBright);
+			fill(v.getColor(), localSat, localBright);
 			rect((i*60)+30,360,40,10+(bandEnergies[i]/2)*bandEnergies[i]);
 		}
 	}
@@ -402,6 +444,11 @@ public class LightCurtain extends PApplet implements Observer{
 		float localRed = 255*(red(color(localColor, localSat, localBright))/(float)100);
 		float localGreen = 255*(green(color(localColor, localSat, localBright))/(float)100);
 		float localBlue = 255*(blue(color(localColor, localSat, localBright))/(float)100);
+		if(rgbVisualizerActive){
+			localRed = 255*(redSlider/(float)100);
+			localGreen = 255*(greenSlider/(float)100);
+			localBlue = 255*(blueSlider/(float)100);
+		}
 		dmxOutput.set(1, 60); // 6 channel mode
 		dmxOutput.set(3, 0); //STROBe
 		dmxOutput.set(4, (int) localRed); 

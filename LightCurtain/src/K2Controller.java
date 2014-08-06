@@ -55,20 +55,28 @@ public class K2Controller {
 	}
 	
 	public void bpmFlash(){
-		getMidiOut().sendNote(new Note(12, 127, 6));
-		getMidiOut().sendNote(new Note(24, 127, 6));
-		getMidiOut().sendNote(new Note(0, 127, 6));
-		getMidiOut().sendNote(new Note(28, 127, 6));
-		getMidiOut().sendNote(new Note(32, 127, 6));
-		getMidiOut().sendNote(new Note(36, 127, 6));
-		getMidiOut().sendNote(new Note(12, 0, 6));
-		getMidiOut().sendNote(new Note(24, 0, 6));
-		getMidiOut().sendNote(new Note(0, 0, 6));
-		getMidiOut().sendNote(new Note(28, 0, 6));
-		getMidiOut().sendNote(new Note(32, 0, 6));
-		getMidiOut().sendNote(new Note(36, 0, 6));
+		getMidiOut().sendNote(new Note(12, 127, 16));
+		getMidiOut().sendNote(new Note(24, 127, 16));
+		getMidiOut().sendNote(new Note(0, 127, 16));
+		getMidiOut().sendNote(new Note(28, 127, 16));
+		getMidiOut().sendNote(new Note(32, 127, 16));
+		getMidiOut().sendNote(new Note(36, 127, 16));
+		getMidiOut().sendNote(new Note(12, 0, 16));
+		getMidiOut().sendNote(new Note(24, 0, 16));
+		getMidiOut().sendNote(new Note(0, 0, 16));
+		getMidiOut().sendNote(new Note(28, 0, 16));
+		getMidiOut().sendNote(new Note(32, 0, 16));
+		getMidiOut().sendNote(new Note(36, 0, 16));
 	}
-
+	
+	public void sendNoteOn(int pitch){
+		getMidiOut().sendNote(new Note(pitch, 127, 16));
+	}
+	
+	public void sendNoteOff(int pitch){
+		getMidiOut().sendNote(new Note(pitch, 0, 16));
+	}
+	
 	public void handleNote(Note note) {
 		getButtons().stream().filter(b -> b.getId() == note.getPitch()).peek(b -> b.setValue(note.getVelocity())).forEach(b -> b.notifyObservers());
 	}
