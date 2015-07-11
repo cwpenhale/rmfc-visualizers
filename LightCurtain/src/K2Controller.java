@@ -15,7 +15,7 @@ public class K2Controller {
 	/**
 	 * @author cpenhale - cwpenhale@gmail.com
 	 */
-	private static final String DEVICE_NAME = "boxputer";
+	private static final String DEVICE_NAME = "XONE:K2";
 	private static final int MIDI_CHANNEL = 4;
 	private static final int  NUMBER_OF_FADERS = 4;
 	private static final int FADER_FIRST_NOTE = 16;

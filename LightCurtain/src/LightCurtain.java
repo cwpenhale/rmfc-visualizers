@@ -51,6 +51,38 @@ public class LightCurtain extends PApplet implements Observer{
 	private static int specDiv;
 	private static int steps;
 	
+	//WORDBANK
+	private static String[] wordbankBank = {
+	                                        "DANCE",
+	                                        "WORK",
+	                                        "BEAT",
+	                                        "FIERCE",
+	                                        "SOUND",
+	                                        "YES",
+	                                        "BOOM",
+	                                        "JUMP",
+	                                        "HANDS",
+	                                        "UP",
+	                                        "UP! UP!",
+	                                        "HIGHER",
+	                                        "SCREAM",
+	                                        "SWAG",
+	                                        "YOLO",
+	                                        "BLING",
+	                                        "!!!!!",
+	                                        "BUMPIN",
+	                                        "PUMPIN",
+	                                        "JUMPIN",
+	                                        "BASS",
+	                                        "TREBEL",
+	                                        "GET",
+	                                        "THE",
+	                                        "F@#&",
+	                                        "UP!!",
+	                                        "WOMP",
+	                                        "RMFC"
+											};
+	
 	//PANEL
 	private static int errorCount = 0;
 	private static int[] gammatable = new int[256];
@@ -64,7 +96,7 @@ public class LightCurtain extends PApplet implements Observer{
 	//END PANEL
 	
 	//DMX
-	private static String DMXPRO_PORT = "COM7";
+	private static String DMXPRO_PORT = "/dev/tty.usbserial-A7XSBYHC";
 	private static int DMXPRO_BAUDRATE = 115000;
 	private DmxP512 dmxOutput;
 	int universeSize=128;
@@ -124,6 +156,12 @@ public class LightCurtain extends PApplet implements Observer{
 	private int redSlider;
 
 	private boolean rgbVisualizerActive;
+
+	private boolean wordbankOn;
+
+	private String currentWord = "RMFC";
+
+	private int wordSelector;
 	
 	public void setup() {
 		defaultConfig();
@@ -141,8 +179,8 @@ public class LightCurtain extends PApplet implements Observer{
 		background(0);
 		k2 = new K2Controller(MidiIO.getInstance(this));
 		// PANEL
-		serialConfigure("COM5");  // change these to your port names
-		serialConfigure("COM6");
+		serialConfigure("/dev/tty.usbmodem461521");  // change these to your port names
+		serialConfigure("/dev/tty.usbmodem465661");
 		if (errorCount > 0) exit();
 		for (int i=0; i < 256; i++) {
 		  gammatable[i] = (int)(pow((float) ((float)i / 255.0), gamma) * 255.0 + 0.5);
@@ -171,6 +209,7 @@ public class LightCurtain extends PApplet implements Observer{
 	public void draw() {
 		//populate values from controller
 		bpmQuant = scaleMidiToPercent(k2.getFaders().stream().filter(v->v.getColumn()==0).findFirst().get().getValue());
+		wordSelector = scaleMidiToPercent(k2.getFaders().stream().filter(v->v.getColumn()==2).findFirst().get().getValue());
 		loBright = scaleMidiToPercent(k2.getFaders().stream().filter(v->v.getColumn()==3).findFirst().get().getValue());
 		hiBright = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==0&&v.getRow()==1).findFirst().get().getValue());
 		midBright = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==0&&v.getRow()==2).findFirst().get().getValue());
@@ -179,7 +218,7 @@ public class LightCurtain extends PApplet implements Observer{
 		halfStrobeOn = k2.getButtons().stream().filter(b -> b.getLabel().equals("H")).findFirst().get().getValue()==127;
 		blackout = k2.getButtons().stream().filter(b -> b.getLabel().equals("P")).findFirst().get().getValue()==127;
 		molefayOn = k2.getButtons().stream().filter(b -> b.getLabel().equals("L")).findFirst().get().getValue()==127;
-		
+		wordbankOn = k2.getButtons().stream().filter(b -> b.getLabel().equals("K")).findFirst().get().getValue()==127;
 		//color
 		rgbVisualizerActive = toggleRgbVis(k2.getButtons().stream().filter(b -> b.getLabel().equals("B")).findFirst().get().getValue()==127);
 		redSlider = scaleMidiToPercent(k2.getRotaries().stream().filter(v->v.getColumn()==1&&v.getRow()==1).findFirst().get().getValue());
@@ -203,6 +242,7 @@ public class LightCurtain extends PApplet implements Observer{
 		}
 		fftVisualizer();
 		molefay();
+		wordbank();
 		PImage now = get();
 		image(now, 0, 0);
 		pushMatrix();
@@ -223,6 +263,24 @@ public class LightCurtain extends PApplet implements Observer{
 			k2.sendNoteOff(RGB_VISUALIZER_INDICATOR);
 		}
 		return rgbVisualizerActive;
+	}
+	
+	private void wordbank(){
+		if(wordbankOn){
+//			wordSelector
+			int selectedWord = (int) (((double) wordSelector/100) * (double)wordbankBank.length);
+			if(selectedWord > wordbankBank.length)
+				selectedWord = wordbankBank.length;
+			if(selectedWord <= 0 )
+				selectedWord = 1;
+			currentWord = wordbankBank[selectedWord-1];
+			textSize(400);
+			textAlign(CENTER);
+			ColoredVector v = getNextColor(new PVector(1,1));
+			fill(v.getColor(), hiBright, hiBright);
+			scale((float).9, (float)1.15);
+			text(currentWord, 600, 400);
+		}
 	}
 
 	private void molefay() {
